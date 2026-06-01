@@ -38,6 +38,30 @@ class Finding:
             "metadata": self.metadata,
         }
 
+    def with_severity(self, severity: str) -> "Finding":
+        return Finding(
+            id=self.id,
+            title=self.title,
+            severity=severity,
+            category=self.category,
+            location=self.location,
+            evidence=self.evidence,
+            remediation=self.remediation,
+            metadata=self.metadata,
+        )
+
+
+@dataclass(frozen=True)
+class Policy:
+    ignored_ids: frozenset[str] = frozenset()
+    severity_overrides: dict[str, str] = field(default_factory=dict)
+    trusted_packages: dict[str, frozenset[str]] = field(default_factory=dict)
+    max_global_packages: dict[str, int] = field(default_factory=dict)
+
+    def is_trusted_package(self, manager: str, package: str) -> bool:
+        trusted = self.trusted_packages.get(manager, frozenset())
+        return package.lower() in trusted
+
 
 @dataclass(frozen=True)
 class AuditContext:
@@ -45,6 +69,7 @@ class AuditContext:
     scan_shell_history: bool = True
     scan_global_packages: bool = True
     max_history_bytes: int = 1_000_000
+    policy: Policy = field(default_factory=Policy)
     now: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     command_runner: Callable[[list[str], int], tuple[int, str, str]] | None = None
 

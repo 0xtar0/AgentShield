@@ -20,6 +20,7 @@ It never uploads data, never remediates without you, and redacts sensitive evide
 - HTML, JSON, Markdown, and SARIF reports suitable for local review, CI artifacts, and code scanning dashboards
 - CI-friendly failure thresholds with `--fail-on`
 - Baselines for adopting AgentShield gradually and failing only on new findings
+- Team policy files for ignored finding IDs, severity overrides, trusted packages, and package-count thresholds
 
 ## Install
 
@@ -60,6 +61,13 @@ agentshield scan --write-baseline .agentshield-baseline.json --format all
 agentshield scan --baseline .agentshield-baseline.json --fail-on medium
 ```
 
+Create and use a team policy:
+
+```bash
+agentshield init-policy --output .agentshield-policy.json
+agentshield scan --policy .agentshield-policy.json --fail-on medium
+```
+
 ## Example Output
 
 ```text
@@ -80,7 +88,7 @@ JSON report: reports/agentshield.json
 | SSH | Private key permissions, unencrypted keys, `.ssh` permissions, unsafe `StrictHostKeyChecking`, missing `known_hosts` |
 | Git | `credential.helper=store`, `http.sslVerify=false`, tokenized URL rewrites, unsafe SSH commands |
 | Secret files | `.env`, `.npmrc`, `.pypirc`, `.netrc`, AWS credentials, Docker auth, GitHub CLI hosts |
-| Global packages | npm, pip, and pipx inventory, suspicious names, broad global package footprint |
+| Global packages | npm, pip, pipx, Homebrew, pnpm, cargo, and gem inventory, suspicious names, broad global package footprint |
 
 ## Privacy Model
 
@@ -110,7 +118,14 @@ options:
   --max-history-bytes N       Bytes to read from the end of each history file
   --baseline PATH             Suppress findings listed in a baseline JSON file
   --write-baseline PATH       Write a baseline JSON file from the full audit
+  --policy PATH               Apply a team policy JSON file
   --fail-on LEVEL             Exit non-zero on low|medium|high|critical findings
+
+usage: agentshield init-policy [options]
+
+options:
+  --output PATH               Policy output path
+  --force                     Overwrite an existing policy file
 ```
 
 ## Development
@@ -124,8 +139,8 @@ python3 -m agentshield scan --skip-global-packages --format all
 
 - Optional remediation recipes
 - VS Code task integration
-- Policy files for team-specific baselines
-- Additional package managers: Homebrew, cargo, gem, pnpm
+- Policy docs with common maintainer profiles
+- Additional package managers: uv tools, mise, asdf
 
 ## License
 
