@@ -11,6 +11,7 @@ It never uploads data, never remediates without you, and redacts sensitive evide
 ## Features
 
 - Exposed environment variable audit with secret-name and high-entropy detection
+- AI agent tool exposure checks for local Codex, Claude, Cursor, MCP, and similar config files
 - Risky shell history scanner for pasted tokens, `curl | sh`, plaintext passwords, broad chmods, and credential-bearing URLs
 - SSH audit for weak file permissions, unencrypted private keys, missing `known_hosts`, and unsafe client config
 - Git global config audit for plaintext credential helpers, disabled SSL verification, tokenized remotes, and unsafe SSH commands
@@ -18,6 +19,7 @@ It never uploads data, never remediates without you, and redacts sensitive evide
 - Global package inventory for npm, pip, and pipx, with warnings for suspicious package names and large global attack surfaces
 - HTML, JSON, Markdown, and SARIF reports suitable for local review, CI artifacts, and code scanning dashboards
 - CI-friendly failure thresholds with `--fail-on`
+- Baselines for adopting AgentShield gradually and failing only on new findings
 
 ## Install
 
@@ -51,6 +53,13 @@ Use it in CI without failing unless a high-severity issue is found:
 agentshield scan --fail-on high --json-output agentshield.json
 ```
 
+Create a baseline for existing findings, then suppress those known findings in future scans:
+
+```bash
+agentshield scan --write-baseline .agentshield-baseline.json --format all
+agentshield scan --baseline .agentshield-baseline.json --fail-on medium
+```
+
 ## Example Output
 
 ```text
@@ -66,6 +75,7 @@ JSON report: reports/agentshield.json
 | Area | Checks |
 | --- | --- |
 | Environment | Secret-like names, token patterns, high-entropy values, unsafe PATH entries |
+| Agent tools | Installed agent CLI inventory, readable/writable agent configs, secret-like agent config values, MCP env bridges |
 | Shell history | API keys, exported secrets, passwords in commands, credential URLs, `curl | sh`, `chmod 777` |
 | SSH | Private key permissions, unencrypted keys, `.ssh` permissions, unsafe `StrictHostKeyChecking`, missing `known_hosts` |
 | Git | `credential.helper=store`, `http.sslVerify=false`, tokenized URL rewrites, unsafe SSH commands |
@@ -98,6 +108,8 @@ options:
   --skip-shell-history        Skip shell history scanning
   --skip-global-packages      Skip npm/pip/pipx inventory
   --max-history-bytes N       Bytes to read from the end of each history file
+  --baseline PATH             Suppress findings listed in a baseline JSON file
+  --write-baseline PATH       Write a baseline JSON file from the full audit
   --fail-on LEVEL             Exit non-zero on low|medium|high|critical findings
 ```
 

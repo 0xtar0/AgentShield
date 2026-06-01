@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+import hashlib
 from pathlib import Path
 from typing import Any, Callable
 
@@ -19,9 +20,15 @@ class Finding:
     remediation: str
     metadata: dict[str, Any] = field(default_factory=dict)
 
+    @property
+    def fingerprint(self) -> str:
+        stable = "\n".join([self.id, self.category, self.location, self.title])
+        return hashlib.sha256(stable.encode("utf-8")).hexdigest()[:16]
+
     def as_dict(self) -> dict[str, Any]:
         return {
             "id": self.id,
+            "fingerprint": self.fingerprint,
             "title": self.title,
             "severity": self.severity,
             "category": self.category,
@@ -75,4 +82,3 @@ class AuditReport:
             "counts": self.counts,
             "findings": [finding.as_dict() for finding in self.findings],
         }
-

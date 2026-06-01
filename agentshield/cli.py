@@ -5,6 +5,7 @@ from pathlib import Path
 
 from agentshield import __version__
 from agentshield.audit import run_audit
+from agentshield.baseline import apply_baseline, load_baseline, write_baseline
 from agentshield.models import AuditContext, SEVERITY_ORDER
 from agentshield.report import write_html, write_json, write_markdown, write_sarif
 
@@ -33,6 +34,8 @@ def build_parser() -> argparse.ArgumentParser:
     scan.add_argument("--skip-shell-history", action="store_true", help="Skip shell history scanning.")
     scan.add_argument("--skip-global-packages", action="store_true", help="Skip npm/pip/pipx inventory.")
     scan.add_argument("--max-history-bytes", type=_positive_int, default=1_000_000, help="Bytes to read from the end of each history file.")
+    scan.add_argument("--baseline", type=Path, help="Suppress findings listed in an AgentShield baseline JSON file.")
+    scan.add_argument("--write-baseline", type=Path, help="Write a baseline JSON file from the full unsuppressed audit.")
     scan.add_argument("--fail-on", choices=["none", "low", "medium", "high", "critical"], default="none", help="Exit non-zero when this severity or higher is present.")
     return parser
 
@@ -46,6 +49,19 @@ def _scan(args: argparse.Namespace) -> int:
         max_history_bytes=args.max_history_bytes,
     )
     report = run_audit(ctx)
+    unsuppressed_report = report
+    suppressed_count = 0
+    if args.write_baseline:
+        write_baseline(unsuppressed_report, args.write_baseline)
+    if args.baseline:
+        try:
+            baseline_fingerprints = load_baseline(args.baseline)
+        except ValueError as exc:
+            print(f"Baseline error: {exc}")
+            return 2
+        baseline_result = apply_baseline(report, baseline_fingerprints)
+        report = baseline_result.report
+        suppressed_count = len(baseline_result.suppressed)
 
     html_path: Path | None = args.output
     json_path: Path | None = args.json_output
@@ -70,6 +86,10 @@ def _scan(args: argparse.Namespace) -> int:
     print("AgentShield audit complete")
     print(f"Risk score: {report.risk_score}/100")
     print("Findings: " + _counts_text(report))
+    if args.write_baseline:
+        print(f"Baseline written: {args.write_baseline}")
+    if args.baseline:
+        print(f"Baseline suppressed: {suppressed_count} findings")
     if args.format in ("html", "all"):
         print(f"HTML report: {html_path}")
     if json_path:

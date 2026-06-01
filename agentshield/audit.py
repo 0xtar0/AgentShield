@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from agentshield.checks import (
+    scan_agent_tools,
     scan_environment,
     scan_git_config,
     scan_global_packages,
@@ -14,6 +15,7 @@ from agentshield.models import AuditContext, AuditReport, Finding, SEVERITY_ORDE
 def run_audit(ctx: AuditContext) -> AuditReport:
     findings: list[Finding] = []
     findings.extend(scan_environment(ctx))
+    findings.extend(scan_agent_tools(ctx))
     if ctx.scan_shell_history:
         findings.extend(scan_shell_history(ctx))
     findings.extend(scan_ssh(ctx))
@@ -23,4 +25,3 @@ def run_audit(ctx: AuditContext) -> AuditReport:
         findings.extend(scan_global_packages(ctx))
     findings.sort(key=lambda item: (-SEVERITY_ORDER[item.severity], item.category, item.id, item.location))
     return AuditReport(generated_at=ctx.now, home=ctx.home, findings=findings)
-

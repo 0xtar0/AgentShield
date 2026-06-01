@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Added baseline write/apply support for gradual adoption and new-finding-only CI gates.
+- Added AI agent tool exposure checks for local agent CLI inventory and sensitive agent config files.
 - Fixed custom `--home` audits so Git config scanning reads that home's `.gitconfig` instead of the operator's global config.
 - Fixed raw Git config parsing for tokenized `[url "..."]` subsections and tab-separated assignments.
 - Rejected non-positive `--max-history-bytes` values to avoid silently skipping shell history.
