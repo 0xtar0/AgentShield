@@ -32,7 +32,7 @@ def build_parser() -> argparse.ArgumentParser:
     scan.add_argument("--format", choices=["html", "json", "md", "sarif", "all"], default="html", help="Report format convenience switch.")
     scan.add_argument("--skip-shell-history", action="store_true", help="Skip shell history scanning.")
     scan.add_argument("--skip-global-packages", action="store_true", help="Skip npm/pip/pipx inventory.")
-    scan.add_argument("--max-history-bytes", type=int, default=1_000_000, help="Bytes to read from the end of each history file.")
+    scan.add_argument("--max-history-bytes", type=_positive_int, default=1_000_000, help="Bytes to read from the end of each history file.")
     scan.add_argument("--fail-on", choices=["none", "low", "medium", "high", "critical"], default="none", help="Exit non-zero when this severity or higher is present.")
     return parser
 
@@ -89,3 +89,13 @@ def _scan(args: argparse.Namespace) -> int:
 def _counts_text(report) -> str:
     counts = report.counts
     return ", ".join(f"{counts[severity]} {severity}" for severity in ["critical", "high", "medium", "low", "info"])
+
+
+def _positive_int(value: str) -> int:
+    try:
+        parsed = int(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("must be a positive integer") from exc
+    if parsed <= 0:
+        raise argparse.ArgumentTypeError("must be a positive integer")
+    return parsed

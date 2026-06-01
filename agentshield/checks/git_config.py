@@ -8,30 +8,31 @@ from agentshield.utils import default_command_runner, safe_read_text
 
 
 def scan_git_config(ctx: AuditContext) -> list[Finding]:
+    fallback = ctx.home / ".gitconfig"
+    if ctx.home.resolve() != Path.home().resolve():
+        if fallback.exists():
+            try:
+                findings = _scan_git_config_text(safe_read_text(fallback))
+            except OSError as exc:
+                return [_git_unavailable(str(exc))]
+            return findings or [_no_git_risks()]
+        return [_no_git_risks(f"{fallback} does not exist.")]
+
     runner = ctx.command_runner or default_command_runner
     code, stdout, stderr = runner(["git", "config", "--global", "--list", "--show-origin"], 8)
     if code != 0:
-        fallback = ctx.home / ".gitconfig"
         if fallback.exists():
             try:
                 stdout = safe_read_text(fallback)
             except OSError as exc:
                 return [_git_unavailable(str(exc))]
         else:
+            if code == 1:
+                return [_no_git_risks("No global Git config was found.")]
             return [_git_unavailable(stderr or "git config could not be read")]
     findings = _scan_git_config_text(stdout)
     if not findings:
-        findings.append(
-            Finding(
-                id="git.no_obvious_risks",
-                title="No obvious risky global Git config detected",
-                severity="info",
-                category="git",
-                location="global git config",
-                evidence="Global Git settings did not match built-in risk heuristics.",
-                remediation="Continue using a secure credential helper and SSL verification.",
-            )
-        )
+        findings.append(_no_git_risks())
     return findings
 
 
@@ -47,6 +48,18 @@ def _git_unavailable(reason: str) -> Finding:
     )
 
 
+def _no_git_risks(evidence: str = "Global Git settings did not match built-in risk heuristics.") -> Finding:
+    return Finding(
+        id="git.no_obvious_risks",
+        title="No obvious risky global Git config detected",
+        severity="info",
+        category="git",
+        location="global git config",
+        evidence=evidence,
+        remediation="Continue using a secure credential helper and SSL verification.",
+    )
+
+
 def _scan_git_config_text(text: str) -> list[Finding]:
     findings: list[Finding] = []
     section = ""
@@ -56,7 +69,7 @@ def _scan_git_config_text(text: str) -> list[Finding]:
             continue
         config_line = _strip_origin(normalized)
         if config_line.startswith("[") and config_line.endswith("]"):
-            section = config_line.strip("[]").split('"', 1)[0].strip().lower()
+            section = _normalize_section(config_line)
             continue
         effective = _effective_config_key(config_line, section)
         lower = effective.lower()
@@ -137,10 +150,18 @@ def _strip_origin(line: str) -> str:
 
 
 def _effective_config_key(line: str, section: str) -> str:
-    collapsed = line.replace(" ", "")
+    collapsed = "".join(line.split())
     if "=" not in collapsed:
         return collapsed
     key, value = collapsed.split("=", 1)
     if "." in key or not section:
         return f"{key}={value}"
     return f"{section}.{key}={value}"
+
+
+def _normalize_section(line: str) -> str:
+    section = line.strip("[]").strip()
+    if '"' not in section:
+        return section.lower()
+    prefix, subsection = section.split('"', 1)
+    return f"{prefix.strip().lower()} {subsection.rstrip(chr(34)).strip()}"
