@@ -27,3 +27,5 @@ jobs:
         run: agentshield scan --home tests --skip-global-packages --skip-shell-history --format json --output reports/smoke.html
       - name: Smoke test policy init
         run: agentshield init-policy --output reports/policy.json
+      - name: Smoke test local action metadata exists
+        run: test -f action.yml

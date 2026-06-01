@@ -1,0 +1,55 @@
+name: AgentShield
+description: Audit developer and runner environments for AI-agent security risks.
+author: AgentShield contributors
+
+inputs:
+  fail-on:
+    description: Minimum severity that should fail the workflow.
+    required: false
+    default: high
+  format:
+    description: Report format to generate.
+    required: false
+    default: all
+  output:
+    description: Base HTML report path. JSON, Markdown, and SARIF use the same stem when format is all.
+    required: false
+    default: reports/agentshield.html
+  home:
+    description: Home directory to audit.
+    required: false
+    default: ""
+  policy:
+    description: Optional AgentShield policy JSON path.
+    required: false
+    default: ""
+  baseline:
+    description: Optional AgentShield baseline JSON path.
+    required: false
+    default: ""
+  skip-shell-history:
+    description: Skip shell history scanning.
+    required: false
+    default: "false"
+  skip-global-packages:
+    description: Skip global package inventory.
+    required: false
+    default: "false"
+
+runs:
+  using: composite
+  steps:
+    - name: Install AgentShield
+      shell: bash
+      run: python -m pip install -e "${{ github.action_path }}"
+    - name: Run AgentShield
+      shell: bash
+      run: |
+        set -euo pipefail
+        args=(scan --format "${{ inputs.format }}" --output "${{ inputs.output }}" --fail-on "${{ inputs.fail-on }}")
+        if [[ -n "${{ inputs.home }}" ]]; then args+=(--home "${{ inputs.home }}"); fi
+        if [[ -n "${{ inputs.policy }}" ]]; then args+=(--policy "${{ inputs.policy }}"); fi
+        if [[ -n "${{ inputs.baseline }}" ]]; then args+=(--baseline "${{ inputs.baseline }}"); fi
+        if [[ "${{ inputs.skip-shell-history }}" == "true" ]]; then args+=(--skip-shell-history); fi
+        if [[ "${{ inputs.skip-global-packages }}" == "true" ]]; then args+=(--skip-global-packages); fi
+        agentshield "${args[@]}"

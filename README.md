@@ -21,6 +21,8 @@ It never uploads data, never remediates without you, and redacts sensitive evide
 - CI-friendly failure thresholds with `--fail-on`
 - Baselines for adopting AgentShield gradually and failing only on new findings
 - Team policy files for ignored finding IDs, severity overrides, trusted packages, and package-count thresholds
+- Remediation recipes with safe commands and manual steps in JSON, Markdown, and HTML reports
+- Composite GitHub Action support for CI usage
 
 ## Install
 
@@ -66,6 +68,16 @@ Create and use a team policy:
 ```bash
 agentshield init-policy --output .agentshield-policy.json
 agentshield scan --policy .agentshield-policy.json --fail-on medium
+```
+
+Use the GitHub Action:
+
+```yaml
+- uses: 0xtar0/AgentShield@main
+  with:
+    fail-on: high
+    format: all
+    skip-shell-history: "true"
 ```
 
 ## Example Output
@@ -137,7 +149,6 @@ python3 -m agentshield scan --skip-global-packages --format all
 
 ## Roadmap
 
-- Optional remediation recipes
 - VS Code task integration
 - Policy docs with common maintainer profiles
 - Additional package managers: uv tools, mise, asdf

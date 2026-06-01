@@ -6,6 +6,8 @@
 - Added AI agent tool exposure checks for local agent CLI inventory and sensitive agent config files.
 - Added policy files for ignored finding IDs, severity overrides, trusted packages, and package-count thresholds.
 - Added global package inventory support for Homebrew, pnpm, cargo, and gem.
+- Added remediation recipes to JSON, Markdown, and HTML reports.
+- Added composite GitHub Action packaging and usage docs.
 - Fixed custom `--home` audits so Git config scanning reads that home's `.gitconfig` instead of the operator's global config.
 - Fixed raw Git config parsing for tokenized `[url "..."]` subsections and tab-separated assignments.
 - Rejected non-positive `--max-history-bytes` values to avoid silently skipping shell history.

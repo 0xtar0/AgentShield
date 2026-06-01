@@ -5,11 +5,12 @@ import json
 from pathlib import Path
 
 from agentshield.models import AuditReport
+from agentshield.remediation import recipe_for
 
 
 def write_json(report: AuditReport, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(report.as_dict(), indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    path.write_text(json.dumps(render_json(report), indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
 def write_sarif(report: AuditReport, path: Path) -> None:
@@ -31,6 +32,7 @@ def write_markdown(report: AuditReport, path: Path) -> None:
         "",
     ]
     for finding in report.findings:
+        recipe = recipe_for(finding)
         lines.extend(
             [
                 f"### [{finding.severity.upper()}] {finding.title}",
@@ -40,15 +42,34 @@ def write_markdown(report: AuditReport, path: Path) -> None:
                 f"- Location: `{finding.location}`",
                 f"- Evidence: `{finding.evidence}`",
                 f"- Remediation: {finding.remediation}",
+                f"- Recipe: {recipe.title}",
                 "",
             ]
         )
+        if recipe.commands:
+            lines.extend(["Commands:", "", "```bash", *recipe.commands, "```", ""])
+        if recipe.manual_steps:
+            lines.extend(["Manual steps:", "", *[f"- {step}" for step in recipe.manual_steps], ""])
+        if recipe.caution:
+            lines.extend([f"Caution: {recipe.caution}", ""])
     path.write_text("\n".join(lines), encoding="utf-8")
 
 
 def write_html(report: AuditReport, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(render_html(report), encoding="utf-8")
+
+
+def render_json(report: AuditReport) -> dict:
+    payload = report.as_dict()
+    payload["findings"] = [
+        {
+            **finding.as_dict(),
+            "remediation_recipe": recipe_for(finding).as_dict(),
+        }
+        for finding in report.findings
+    ]
+    return payload
 
 
 def render_sarif(report: AuditReport) -> dict:
@@ -111,21 +132,7 @@ def render_sarif(report: AuditReport) -> dict:
 
 def render_html(report: AuditReport) -> str:
     cards = "\n".join(
-        f"""
-        <article class="finding severity-{html.escape(finding.severity)}">
-          <div class="finding-head">
-            <span class="badge">{html.escape(finding.severity.upper())}</span>
-            <span class="category">{html.escape(finding.category)}</span>
-          </div>
-          <h2>{html.escape(finding.title)}</h2>
-          <dl>
-            <dt>ID</dt><dd><code>{html.escape(finding.id)}</code></dd>
-            <dt>Location</dt><dd><code>{html.escape(finding.location)}</code></dd>
-            <dt>Evidence</dt><dd><code>{html.escape(finding.evidence)}</code></dd>
-            <dt>Remediation</dt><dd>{html.escape(finding.remediation)}</dd>
-          </dl>
-        </article>
-        """
+        _render_finding_card(finding)
         for finding in report.findings
     )
     counts = report.counts
@@ -178,10 +185,15 @@ def render_html(report: AuditReport) -> str:
     .severity-medium .badge {{ background: var(--amber); }}
     .category {{ color: var(--muted); font-size: 13px; }}
     h2 {{ margin: 0 0 12px; font-size: 20px; letter-spacing: 0; }}
+    h3 {{ margin: 16px 0 8px; font-size: 15px; letter-spacing: 0; }}
     dl {{ display: grid; grid-template-columns: 120px 1fr; gap: 8px 14px; margin: 0; }}
     dt {{ color: var(--muted); }}
     dd {{ margin: 0; min-width: 0; }}
-    code {{ color: #d6fffa; background: var(--panel-2); border: 1px solid var(--line); border-radius: 5px; padding: 2px 5px; word-break: break-word; }}
+    code, pre {{ color: #d6fffa; background: var(--panel-2); border: 1px solid var(--line); border-radius: 5px; }}
+    code {{ padding: 2px 5px; word-break: break-word; }}
+    pre {{ padding: 10px; overflow-x: auto; white-space: pre-wrap; }}
+    ul {{ margin: 8px 0 0; padding-left: 20px; }}
+    .caution {{ color: var(--amber); }}
     @media (max-width: 640px) {{ dl {{ grid-template-columns: 1fr; }} dt {{ margin-top: 8px; }} }}
   </style>
 </head>
@@ -203,6 +215,36 @@ def render_html(report: AuditReport) -> str:
   </main>
 </body>
 </html>
+"""
+
+
+def _render_finding_card(finding) -> str:
+    recipe = recipe_for(finding)
+    commands = ""
+    if recipe.commands:
+        commands = f"<h3>Commands</h3><pre>{html.escape(chr(10).join(recipe.commands))}</pre>"
+    manual_steps = ""
+    if recipe.manual_steps:
+        manual_steps = "<h3>Manual Steps</h3><ul>" + "".join(f"<li>{html.escape(step)}</li>" for step in recipe.manual_steps) + "</ul>"
+    caution = f'<p class="caution"><strong>Caution:</strong> {html.escape(recipe.caution)}</p>' if recipe.caution else ""
+    return f"""
+        <article class="finding severity-{html.escape(finding.severity)}">
+          <div class="finding-head">
+            <span class="badge">{html.escape(finding.severity.upper())}</span>
+            <span class="category">{html.escape(finding.category)}</span>
+          </div>
+          <h2>{html.escape(finding.title)}</h2>
+          <dl>
+            <dt>ID</dt><dd><code>{html.escape(finding.id)}</code></dd>
+            <dt>Location</dt><dd><code>{html.escape(finding.location)}</code></dd>
+            <dt>Evidence</dt><dd><code>{html.escape(finding.evidence)}</code></dd>
+            <dt>Remediation</dt><dd>{html.escape(finding.remediation)}</dd>
+            <dt>Recipe</dt><dd>{html.escape(recipe.title)}</dd>
+          </dl>
+          {commands}
+          {manual_steps}
+          {caution}
+        </article>
 """
 
 
