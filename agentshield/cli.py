@@ -1,0 +1,84 @@
+from __future__ import annotations
+
+import argparse
+from pathlib import Path
+
+from agentshield import __version__
+from agentshield.audit import run_audit
+from agentshield.models import AuditContext, SEVERITY_ORDER
+from agentshield.report import write_html, write_json, write_markdown
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = build_parser()
+    args = parser.parse_args(argv)
+    if args.command == "scan":
+        return _scan(args)
+    parser.print_help()
+    return 2
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(prog="agentshield", description="Audit a developer laptop for agentic-coding security risks.")
+    parser.add_argument("--version", action="version", version=f"AgentShield {__version__}")
+    subparsers = parser.add_subparsers(dest="command")
+
+    scan = subparsers.add_parser("scan", help="Run a local read-only workstation audit.")
+    scan.add_argument("--home", type=Path, default=Path.home(), help="Home directory to audit.")
+    scan.add_argument("--output", type=Path, default=Path("reports/agentshield.html"), help="HTML report path.")
+    scan.add_argument("--json-output", type=Path, help="JSON report path.")
+    scan.add_argument("--markdown-output", type=Path, help="Markdown report path.")
+    scan.add_argument("--format", choices=["html", "json", "md", "all"], default="html", help="Report format convenience switch.")
+    scan.add_argument("--skip-shell-history", action="store_true", help="Skip shell history scanning.")
+    scan.add_argument("--skip-global-packages", action="store_true", help="Skip npm/pip/pipx inventory.")
+    scan.add_argument("--max-history-bytes", type=int, default=1_000_000, help="Bytes to read from the end of each history file.")
+    scan.add_argument("--fail-on", choices=["none", "low", "medium", "high", "critical"], default="none", help="Exit non-zero when this severity or higher is present.")
+    return parser
+
+
+def _scan(args: argparse.Namespace) -> int:
+    home = args.home.expanduser().resolve()
+    ctx = AuditContext(
+        home=home,
+        scan_shell_history=not args.skip_shell_history,
+        scan_global_packages=not args.skip_global_packages,
+        max_history_bytes=args.max_history_bytes,
+    )
+    report = run_audit(ctx)
+
+    html_path: Path | None = args.output
+    json_path: Path | None = args.json_output
+    markdown_path: Path | None = args.markdown_output
+    if args.format in ("json", "all") and json_path is None:
+        json_path = args.output.with_suffix(".json")
+    if args.format in ("md", "all") and markdown_path is None:
+        markdown_path = args.output.with_suffix(".md")
+
+    if args.format in ("html", "all"):
+        write_html(report, html_path)
+    if json_path:
+        write_json(report, json_path)
+    if markdown_path:
+        write_markdown(report, markdown_path)
+
+    print("AgentShield audit complete")
+    print(f"Risk score: {report.risk_score}/100")
+    print("Findings: " + _counts_text(report))
+    if args.format in ("html", "all"):
+        print(f"HTML report: {html_path}")
+    if json_path:
+        print(f"JSON report: {json_path}")
+    if markdown_path:
+        print(f"Markdown report: {markdown_path}")
+
+    if args.fail_on != "none":
+        threshold = SEVERITY_ORDER[args.fail_on]
+        if any(SEVERITY_ORDER[finding.severity] >= threshold for finding in report.findings):
+            return 1
+    return 0
+
+
+def _counts_text(report) -> str:
+    counts = report.counts
+    return ", ".join(f"{counts[severity]} {severity}" for severity in ["critical", "high", "medium", "low", "info"])
+
