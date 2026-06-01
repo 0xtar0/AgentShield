@@ -6,7 +6,7 @@ from pathlib import Path
 from agentshield import __version__
 from agentshield.audit import run_audit
 from agentshield.models import AuditContext, SEVERITY_ORDER
-from agentshield.report import write_html, write_json, write_markdown
+from agentshield.report import write_html, write_json, write_markdown, write_sarif
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -28,7 +28,8 @@ def build_parser() -> argparse.ArgumentParser:
     scan.add_argument("--output", type=Path, default=Path("reports/agentshield.html"), help="HTML report path.")
     scan.add_argument("--json-output", type=Path, help="JSON report path.")
     scan.add_argument("--markdown-output", type=Path, help="Markdown report path.")
-    scan.add_argument("--format", choices=["html", "json", "md", "all"], default="html", help="Report format convenience switch.")
+    scan.add_argument("--sarif-output", type=Path, help="SARIF report path.")
+    scan.add_argument("--format", choices=["html", "json", "md", "sarif", "all"], default="html", help="Report format convenience switch.")
     scan.add_argument("--skip-shell-history", action="store_true", help="Skip shell history scanning.")
     scan.add_argument("--skip-global-packages", action="store_true", help="Skip npm/pip/pipx inventory.")
     scan.add_argument("--max-history-bytes", type=int, default=1_000_000, help="Bytes to read from the end of each history file.")
@@ -49,10 +50,13 @@ def _scan(args: argparse.Namespace) -> int:
     html_path: Path | None = args.output
     json_path: Path | None = args.json_output
     markdown_path: Path | None = args.markdown_output
+    sarif_path: Path | None = args.sarif_output
     if args.format in ("json", "all") and json_path is None:
         json_path = args.output.with_suffix(".json")
     if args.format in ("md", "all") and markdown_path is None:
         markdown_path = args.output.with_suffix(".md")
+    if args.format in ("sarif", "all") and sarif_path is None:
+        sarif_path = args.output.with_suffix(".sarif")
 
     if args.format in ("html", "all"):
         write_html(report, html_path)
@@ -60,6 +64,8 @@ def _scan(args: argparse.Namespace) -> int:
         write_json(report, json_path)
     if markdown_path:
         write_markdown(report, markdown_path)
+    if sarif_path:
+        write_sarif(report, sarif_path)
 
     print("AgentShield audit complete")
     print(f"Risk score: {report.risk_score}/100")
@@ -70,6 +76,8 @@ def _scan(args: argparse.Namespace) -> int:
         print(f"JSON report: {json_path}")
     if markdown_path:
         print(f"Markdown report: {markdown_path}")
+    if sarif_path:
+        print(f"SARIF report: {sarif_path}")
 
     if args.fail_on != "none":
         threshold = SEVERITY_ORDER[args.fail_on]
@@ -81,4 +89,3 @@ def _scan(args: argparse.Namespace) -> int:
 def _counts_text(report) -> str:
     counts = report.counts
     return ", ".join(f"{counts[severity]} {severity}" for severity in ["critical", "high", "medium", "low", "info"])
-

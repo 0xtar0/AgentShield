@@ -49,9 +49,17 @@ def _git_unavailable(reason: str) -> Finding:
 
 def _scan_git_config_text(text: str) -> list[Finding]:
     findings: list[Finding] = []
+    section = ""
     for line_number, line in enumerate(text.splitlines(), start=1):
         normalized = line.strip()
-        lower = normalized.lower()
+        if not normalized or normalized.startswith(("#", ";")):
+            continue
+        config_line = _strip_origin(normalized)
+        if config_line.startswith("[") and config_line.endswith("]"):
+            section = config_line.strip("[]").split('"', 1)[0].strip().lower()
+            continue
+        effective = _effective_config_key(config_line, section)
+        lower = effective.lower()
         location = _line_location(normalized, line_number)
         if "credential.helper=store" in lower:
             findings.append(
@@ -101,7 +109,7 @@ def _scan_git_config_text(text: str) -> list[Finding]:
                     remediation="Remove unsafe SSH options from core.sshCommand.",
                 )
             )
-        if lower.startswith("file:") and "safe.directory=*" in lower:
+        if "safe.directory=*" in lower:
             findings.append(
                 Finding(
                     id="git.safe_directory_wildcard",
@@ -121,3 +129,18 @@ def _line_location(line: str, line_number: int) -> str:
         return line.split("\t", 1)[0]
     return f"global git config:{line_number}"
 
+
+def _strip_origin(line: str) -> str:
+    if "\t" in line and line.startswith("file:"):
+        return line.split("\t", 1)[1].strip()
+    return line
+
+
+def _effective_config_key(line: str, section: str) -> str:
+    collapsed = line.replace(" ", "")
+    if "=" not in collapsed:
+        return collapsed
+    key, value = collapsed.split("=", 1)
+    if "." in key or not section:
+        return f"{key}={value}"
+    return f"{section}.{key}={value}"

@@ -12,6 +12,11 @@ def write_json(report: AuditReport, path: Path) -> None:
     path.write_text(json.dumps(report.as_dict(), indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
+def write_sarif(report: AuditReport, path: Path) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(render_sarif(report), indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
 def write_markdown(report: AuditReport, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     lines = [
@@ -44,6 +49,64 @@ def write_markdown(report: AuditReport, path: Path) -> None:
 def write_html(report: AuditReport, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(render_html(report), encoding="utf-8")
+
+
+def render_sarif(report: AuditReport) -> dict:
+    rules: dict[str, dict] = {}
+    results: list[dict] = []
+    for finding in report.findings:
+        rules.setdefault(
+            finding.id,
+            {
+                "id": finding.id,
+                "name": finding.title,
+                "shortDescription": {"text": finding.title},
+                "fullDescription": {"text": finding.remediation},
+                "defaultConfiguration": {"level": _sarif_level(finding.severity)},
+                "properties": {"category": finding.category, "severity": finding.severity},
+            },
+        )
+        artifact, line = _artifact_location(finding.location, report.home)
+        result = {
+            "ruleId": finding.id,
+            "level": _sarif_level(finding.severity),
+            "message": {"text": f"{finding.title}: {finding.evidence}"},
+            "properties": {"category": finding.category, "severity": finding.severity},
+        }
+        if artifact:
+            region = {"startLine": line} if line else {}
+            result["locations"] = [
+                {
+                    "physicalLocation": {
+                        "artifactLocation": {"uri": artifact},
+                        **({"region": region} if region else {}),
+                    }
+                }
+            ]
+        results.append(result)
+    return {
+        "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+        "version": "2.1.0",
+        "runs": [
+            {
+                "tool": {
+                    "driver": {
+                        "name": "AgentShield",
+                        "informationUri": "https://github.com/0xtar0/AgentShield",
+                        "rules": list(rules.values()),
+                    }
+                },
+                "results": results,
+                "invocations": [
+                    {
+                        "executionSuccessful": True,
+                        "endTimeUtc": report.generated_at.isoformat(),
+                        "properties": {"risk_score": report.risk_score, "home": str(report.home)},
+                    }
+                ],
+            }
+        ],
+    }
 
 
 def render_html(report: AuditReport) -> str:
@@ -147,3 +210,29 @@ def _counts_text(report: AuditReport) -> str:
     counts = report.counts
     return ", ".join(f"{counts[severity]} {severity}" for severity in ["critical", "high", "medium", "low", "info"])
 
+
+def _sarif_level(severity: str) -> str:
+    return {
+        "critical": "error",
+        "high": "error",
+        "medium": "warning",
+        "low": "note",
+        "info": "none",
+    }.get(severity, "warning")
+
+
+def _artifact_location(location: str, home: Path) -> tuple[str | None, int | None]:
+    path_text = location
+    line = None
+    if ":" in location:
+        maybe_path, maybe_line = location.rsplit(":", 1)
+        if maybe_line.isdigit():
+            path_text = maybe_path
+            line = int(maybe_line)
+    path = Path(path_text)
+    if not path.exists():
+        return None, line
+    try:
+        return path.resolve().relative_to(home.resolve()).as_posix(), line
+    except ValueError:
+        return path.resolve().as_uri(), line

@@ -16,7 +16,7 @@ It never uploads data, never remediates without you, and redacts sensitive evide
 - Git global config audit for plaintext credential helpers, disabled SSL verification, tokenized remotes, and unsafe SSH commands
 - Secret-bearing file audit for `.env`, `.npmrc`, `.pypirc`, `.netrc`, AWS credentials, Docker auth config, and GitHub CLI hosts
 - Global package inventory for npm, pip, and pipx, with warnings for suspicious package names and large global attack surfaces
-- HTML, JSON, and Markdown reports suitable for local review or CI artifacts
+- HTML, JSON, Markdown, and SARIF reports suitable for local review, CI artifacts, and code scanning dashboards
 - CI-friendly failure thresholds with `--fail-on`
 
 ## Install
@@ -92,7 +92,9 @@ options:
   --output PATH               HTML report path
   --json-output PATH          JSON report path
   --markdown-output PATH      Markdown report path
-  --format html|json|md|all   Report format convenience switch
+  --sarif-output PATH         SARIF report path
+  --format html|json|md|sarif|all
+                              Report format convenience switch
   --skip-shell-history        Skip shell history scanning
   --skip-global-packages      Skip npm/pip/pipx inventory
   --max-history-bytes N       Bytes to read from the end of each history file
@@ -108,7 +110,6 @@ python3 -m agentshield scan --skip-global-packages --format all
 
 ## Roadmap
 
-- SARIF output for code scanning dashboards
 - Optional remediation recipes
 - VS Code task integration
 - Policy files for team-specific baselines
