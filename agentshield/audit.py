@@ -5,6 +5,7 @@ from agentshield.checks import (
     scan_environment,
     scan_git_config,
     scan_global_packages,
+    scan_project,
     scan_secret_files,
     scan_shell_history,
     scan_ssh,
@@ -24,6 +25,7 @@ def run_audit(ctx: AuditContext) -> AuditReport:
     findings.extend(scan_secret_files(ctx))
     if ctx.scan_global_packages:
         findings.extend(scan_global_packages(ctx))
+    findings.extend(scan_project(ctx))
     findings = apply_policy(findings, ctx.policy)
     findings.sort(key=lambda item: (-SEVERITY_ORDER[item.severity], item.category, item.id, item.location))
     return AuditReport(generated_at=ctx.now, home=ctx.home, findings=findings)

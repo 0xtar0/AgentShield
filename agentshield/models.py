@@ -66,6 +66,7 @@ class Policy:
 @dataclass(frozen=True)
 class AuditContext:
     home: Path
+    repo: Path | None = None
     scan_shell_history: bool = True
     scan_global_packages: bool = True
     max_history_bytes: int = 1_000_000

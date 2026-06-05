@@ -34,6 +34,21 @@ class RemediationTests(unittest.TestCase):
         self.assertEqual(recipe.commands, [])
         self.assertTrue(any("Rotate" in step for step in recipe.manual_steps))
 
+    def test_project_sensitive_file_recipe_is_actionable(self):
+        finding = Finding(
+            id="project.sensitive_file_present",
+            title="Sensitive file",
+            severity="high",
+            category="project",
+            location="/tmp/repo/.env",
+            evidence=".env exists",
+            remediation="Move it.",
+        )
+
+        recipe = recipe_for(finding)
+        self.assertIn("Remove sensitive file", recipe.title)
+        self.assertTrue(any(".gitignore" in step for step in recipe.manual_steps))
+
 
 if __name__ == "__main__":
     unittest.main()

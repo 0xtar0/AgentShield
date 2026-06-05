@@ -114,6 +114,48 @@ def recipe_for(finding: Finding) -> RemediationRecipe:
                 "Launch coding agents only with the minimum environment they need.",
             ],
         )
+    if finding.id == "project.sensitive_file_present":
+        return RemediationRecipe(
+            title="Remove sensitive file from repository",
+            commands=[],
+            manual_steps=[
+                "Confirm the file contains only safe example data before committing it.",
+                "Move real secrets outside the repository and add a sanitized .example file if documentation is needed.",
+                "Add the file pattern to .gitignore and remove any committed secret history if necessary.",
+            ],
+        )
+    if finding.id == "project.gitignore_missing":
+        return RemediationRecipe(
+            title="Add repository secret ignore rules",
+            commands=[],
+            manual_steps=["Create a .gitignore with patterns for .env, .env.*, .npmrc, .pypirc, .netrc, and cloud credential files."],
+        )
+    if finding.id == "project.gitignore_missing_secret_patterns":
+        return RemediationRecipe(
+            title="Extend .gitignore secret protections",
+            commands=[],
+            manual_steps=["Add the missing secret-file patterns listed in the finding evidence to .gitignore."],
+        )
+    if finding.id == "project.tokenized_remote":
+        return RemediationRecipe(
+            title="Remove tokenized Git remote",
+            commands=[],
+            manual_steps=[
+                "Rotate the embedded token.",
+                "Replace the remote with an SSH URL or credential-manager-backed HTTPS URL.",
+                "Check commit history and local config for the same token.",
+            ],
+            caution="Do not paste the tokenized remote URL into issue trackers, chat, or AI tools.",
+        )
+    if finding.id == "project.agent_config_env_bridge":
+        return RemediationRecipe(
+            title="Sanitize repo-local agent config",
+            commands=[],
+            manual_steps=[
+                "Keep only placeholder env values in committed MCP or agent config.",
+                "Move real tool environment variables into local user config or CI secrets.",
+            ],
+        )
     if finding.id.endswith(".large_global_surface"):
         return RemediationRecipe(
             title="Reduce global package attack surface",

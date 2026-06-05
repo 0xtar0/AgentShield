@@ -26,6 +26,29 @@ class CliTests(unittest.TestCase):
                 self.assertEqual(main(["init-policy", "--output", str(path)]), 2)
                 self.assertEqual(main(["init-policy", "--output", str(path), "--force"]), 0)
 
+    def test_scan_accepts_repo_argument(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            (repo / ".gitignore").write_text(".env\n.env.*\n.npmrc\n.pypirc\n.netrc\n.aws/credentials\n.codex/auth.json\n", encoding="utf-8")
+            with contextlib.redirect_stdout(io.StringIO()):
+                code = main(
+                    [
+                        "scan",
+                        "--home",
+                        str(repo),
+                        "--repo",
+                        str(repo),
+                        "--skip-shell-history",
+                        "--skip-global-packages",
+                        "--format",
+                        "json",
+                        "--output",
+                        str(repo / "report.html"),
+                    ]
+                )
+            self.assertEqual(code, 0)
+            self.assertTrue((repo / "report.json").exists())
+
 
 if __name__ == "__main__":
     unittest.main()

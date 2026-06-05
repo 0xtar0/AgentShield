@@ -23,6 +23,7 @@ jobs:
           fail-on: high
           format: all
           output: reports/agentshield.html
+          repo: ${{ github.workspace }}
           skip-shell-history: "true"
       - uses: actions/upload-artifact@v4
         if: always()

@@ -29,6 +29,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     scan = subparsers.add_parser("scan", help="Run a local read-only workstation audit.")
     scan.add_argument("--home", type=Path, default=Path.home(), help="Home directory to audit.")
+    scan.add_argument("--repo", type=Path, help="Optional repository path to scan for project-local risks.")
     scan.add_argument("--output", type=Path, default=Path("reports/agentshield.html"), help="HTML report path.")
     scan.add_argument("--json-output", type=Path, help="JSON report path.")
     scan.add_argument("--markdown-output", type=Path, help="Markdown report path.")
@@ -57,6 +58,7 @@ def _scan(args: argparse.Namespace) -> int:
         return 2
     ctx = AuditContext(
         home=home,
+        repo=args.repo.expanduser().resolve() if args.repo else None,
         scan_shell_history=not args.skip_shell_history,
         scan_global_packages=not args.skip_global_packages,
         max_history_bytes=args.max_history_bytes,

@@ -4,7 +4,7 @@
 
 **Secure your dev laptop before agents touch it.**
 
-AgentShield is a local-first security auditor for developers using AI coding agents, terminal agents, IDE assistants, and automation-heavy workflows. It scans the places where agentic tools commonly inherit power: environment variables, shell history, SSH keys, Git config, secret-bearing dotfiles, and global developer packages.
+AgentShield is a local-first security auditor for developers using AI coding agents, terminal agents, IDE assistants, and automation-heavy workflows. It scans the places where agentic tools commonly inherit power: environment variables, shell history, SSH keys, Git config, secret-bearing dotfiles, global developer packages, and project repositories.
 
 It never uploads data, never remediates without you, and redacts sensitive evidence in reports.
 
@@ -23,6 +23,7 @@ It never uploads data, never remediates without you, and redacts sensitive evide
 - Team policy files for ignored finding IDs, severity overrides, trusted packages, and package-count thresholds
 - Remediation recipes with safe commands and manual steps in JSON, Markdown, and HTML reports
 - Composite GitHub Action support for CI usage
+- Optional repository scanning for committed secret files, missing `.gitignore` protections, tokenized remotes, and repo-local agent config
 
 ## Install
 
@@ -48,6 +49,12 @@ Audit another home directory, such as a test fixture or mounted workstation prof
 
 ```bash
 agentshield scan --home /Users/alex --format all
+```
+
+Audit a repository alongside the workstation:
+
+```bash
+agentshield scan --repo /path/to/repo --format all
 ```
 
 Use it in CI without failing unless a high-severity issue is found:
@@ -101,6 +108,7 @@ JSON report: reports/agentshield.json
 | Git | `credential.helper=store`, `http.sslVerify=false`, tokenized URL rewrites, unsafe SSH commands |
 | Secret files | `.env`, `.npmrc`, `.pypirc`, `.netrc`, AWS credentials, Docker auth, GitHub CLI hosts |
 | Global packages | npm, pip, pipx, Homebrew, pnpm, cargo, and gem inventory, suspicious names, broad global package footprint |
+| Project | Sensitive files in the repo tree, missing `.gitignore` protections, tokenized remotes, repo-local agent/MCP env bridges |
 
 ## Privacy Model
 
@@ -119,6 +127,7 @@ usage: agentshield scan [options]
 
 options:
   --home PATH                 Home directory to audit
+  --repo PATH                 Optional repository path to scan
   --output PATH               HTML report path
   --json-output PATH          JSON report path
   --markdown-output PATH      Markdown report path
