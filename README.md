@@ -77,6 +77,13 @@ agentshield init-policy --output .agentshield-policy.json
 agentshield scan --policy .agentshield-policy.json --fail-on medium
 ```
 
+List rule IDs for policy authoring:
+
+```bash
+agentshield rules
+agentshield rules --category project --format json
+```
+
 Use the GitHub Action:
 
 ```yaml
@@ -149,6 +156,12 @@ usage: agentshield init-policy [options]
 options:
   --output PATH               Policy output path
   --force                     Overwrite an existing policy file
+
+usage: agentshield rules [options]
+
+options:
+  --format text|json          Rule catalog output format
+  --category CATEGORY         Filter by category
 ```
 
 ## Development

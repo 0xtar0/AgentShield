@@ -105,6 +105,16 @@ class CliTests(unittest.TestCase):
                 )
             self.assertEqual(code, 0)
 
+    def test_rules_command_outputs_text_and_json(self):
+        with contextlib.redirect_stdout(io.StringIO()) as text_output:
+            self.assertEqual(main(["rules", "--category", "project"]), 0)
+        self.assertIn("project.sensitive_file_present", text_output.getvalue())
+
+        with contextlib.redirect_stdout(io.StringIO()) as json_output:
+            self.assertEqual(main(["rules", "--category", "project", "--format", "json"]), 0)
+        payload = json.loads(json_output.getvalue())
+        self.assertTrue(any(rule["id"] == "project.sensitive_file_present" for rule in payload))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import fnmatch
 import json
 from pathlib import Path
 from typing import Any
@@ -58,14 +59,27 @@ def load_policy(path: Path) -> Policy:
 def apply_policy(findings: list[Finding], policy: Policy) -> list[Finding]:
     filtered: list[Finding] = []
     for finding in findings:
-        if finding.id in policy.ignored_ids:
+        if _matches_any(finding.id, policy.ignored_ids):
             continue
-        severity = policy.severity_overrides.get(finding.id)
+        severity = _severity_override_for(finding.id, policy.severity_overrides)
         if severity:
             filtered.append(finding.with_severity(severity))
         else:
             filtered.append(finding)
     return filtered
+
+
+def _matches_any(finding_id: str, patterns: frozenset[str]) -> bool:
+    return any(fnmatch.fnmatchcase(finding_id, pattern) for pattern in patterns)
+
+
+def _severity_override_for(finding_id: str, overrides: dict[str, str]) -> str | None:
+    if finding_id in overrides:
+        return overrides[finding_id]
+    for pattern, severity in overrides.items():
+        if any(char in pattern for char in "*?[]") and fnmatch.fnmatchcase(finding_id, pattern):
+            return severity
+    return None
 
 
 def _string_set(value: Any, field_name: str) -> set[str]:

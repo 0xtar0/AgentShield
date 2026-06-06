@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 from pathlib import Path
 
 from agentshield import __version__
@@ -9,6 +10,7 @@ from agentshield.baseline import apply_baseline, load_baseline, write_baseline
 from agentshield.models import AuditContext, AuditReport, SEVERITY_ORDER
 from agentshield.policy import load_policy, write_default_policy
 from agentshield.report import write_html, write_json, write_markdown, write_sarif
+from agentshield.rules import rules_for_category
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -18,6 +20,8 @@ def main(argv: list[str] | None = None) -> int:
         return _scan(args)
     if args.command == "init-policy":
         return _init_policy(args)
+    if args.command == "rules":
+        return _rules(args)
     parser.print_help()
     return 2
 
@@ -47,6 +51,10 @@ def build_parser() -> argparse.ArgumentParser:
     init_policy = subparsers.add_parser("init-policy", help="Write a starter AgentShield policy JSON file.")
     init_policy.add_argument("--output", type=Path, default=Path(".agentshield-policy.json"), help="Policy output path.")
     init_policy.add_argument("--force", action="store_true", help="Overwrite an existing policy file.")
+
+    rules = subparsers.add_parser("rules", help="List AgentShield rule IDs for policies and baselines.")
+    rules.add_argument("--format", choices=["text", "json"], default="text", help="Output format.")
+    rules.add_argument("--category", help="Filter by category, such as project, ssh, git, or agent-tools.")
     return parser
 
 
@@ -134,6 +142,16 @@ def _init_policy(args: argparse.Namespace) -> int:
         return 2
     write_default_policy(args.output)
     print(f"Policy written: {args.output}")
+    return 0
+
+
+def _rules(args: argparse.Namespace) -> int:
+    rules = rules_for_category(args.category)
+    if args.format == "json":
+        print(json.dumps([rule.as_dict() for rule in rules], indent=2, sort_keys=True))
+        return 0
+    for rule in rules:
+        print(f"{rule.id}\t{rule.category}\t{rule.default_severity}\t{rule.title}")
     return 0
 
 

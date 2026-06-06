@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Added `agentshield rules` for finding rule catalog output in text or JSON.
+- Added wildcard support in policy `ignored_ids` and `severity_overrides`.
 - Added `--min-severity` filtering for reports and failure checks.
 - Improved `.gitignore` matching so `.env*` covers both `.env` and `.env.*` requirements.
 - Reduced repository-scan false positives for generic `credentials` and `auth.json` files.

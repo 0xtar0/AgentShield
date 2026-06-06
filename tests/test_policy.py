@@ -39,6 +39,28 @@ class PolicyTests(unittest.TestCase):
             self.assertEqual(filtered[0].severity, "low")
             self.assertTrue(policy.is_trusted_package("npm", "TypeScript"))
 
+    def test_policy_supports_wildcard_ignores_and_overrides(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "policy.json"
+            path.write_text(
+                """
+{
+  "ignored_ids": ["project.*"],
+  "severity_overrides": {"packages.*.suspicious_name": "high"}
+}
+""",
+                encoding="utf-8",
+            )
+            policy = load_policy(path)
+            findings = [
+                Finding("project.sensitive_file_present", "Sensitive", "high", "project", ".env", "exists", "Move it."),
+                Finding("packages.npm.suspicious_name", "Suspicious", "medium", "global-packages", "npm:x", "x", "Verify."),
+            ]
+            filtered = apply_policy(findings, policy)
+            self.assertEqual(len(filtered), 1)
+            self.assertEqual(filtered[0].id, "packages.npm.suspicious_name")
+            self.assertEqual(filtered[0].severity, "high")
+
     def test_policy_rejects_invalid_severity(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "policy.json"
