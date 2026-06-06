@@ -118,7 +118,7 @@ def _scan_gitignore(repo: Path) -> list[Finding]:
             )
         ]
     ignored_patterns = _parse_gitignore_patterns(content)
-    missing = [pattern for pattern in GITIGNORE_PATTERNS if pattern not in ignored_patterns and f"/{pattern}" not in ignored_patterns]
+    missing = [pattern for pattern in GITIGNORE_PATTERNS if not _gitignore_covers(pattern, ignored_patterns)]
     if not missing:
         return []
     return [
@@ -198,6 +198,19 @@ def _parse_gitignore_patterns(content: str) -> set[str]:
             continue
         patterns.add(line.rstrip("/"))
     return patterns
+
+
+def _gitignore_covers(required: str, patterns: set[str]) -> bool:
+    candidates = {required, f"/{required}"}
+    if candidates & patterns:
+        return True
+    if required == ".env":
+        return any(pattern in patterns for pattern in {".env*", ".env.*", "/.env*", "/.env.*"})
+    if required == ".env.*":
+        return any(pattern in patterns for pattern in {".env*", ".env.*", "/.env*", "/.env.*"})
+    if "/" in required:
+        return any(pattern.endswith(required) for pattern in patterns)
+    return False
 
 
 def _project_secret_findings(path: Path) -> list[Finding]:

@@ -84,6 +84,7 @@ Use the GitHub Action:
   with:
     fail-on: high
     format: all
+    min-severity: low
     skip-shell-history: "true"
 ```
 
@@ -140,6 +141,7 @@ options:
   --baseline PATH             Suppress findings listed in a baseline JSON file
   --write-baseline PATH       Write a baseline JSON file from the full audit
   --policy PATH               Apply a team policy JSON file
+  --min-severity LEVEL        Only report findings at this severity or higher
   --fail-on LEVEL             Exit non-zero on low|medium|high|critical findings
 
 usage: agentshield init-policy [options]

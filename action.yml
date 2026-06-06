@@ -39,6 +39,10 @@ inputs:
     description: Skip global package inventory.
     required: false
     default: "false"
+  min-severity:
+    description: Only include findings at this severity or higher in reports and failure checks.
+    required: false
+    default: info
 
 runs:
   using: composite
@@ -50,7 +54,7 @@ runs:
       shell: bash
       run: |
         set -euo pipefail
-        args=(scan --format "${{ inputs.format }}" --output "${{ inputs.output }}" --fail-on "${{ inputs.fail-on }}")
+        args=(scan --format "${{ inputs.format }}" --output "${{ inputs.output }}" --fail-on "${{ inputs.fail-on }}" --min-severity "${{ inputs.min-severity }}")
         if [[ -n "${{ inputs.home }}" ]]; then args+=(--home "${{ inputs.home }}"); fi
         if [[ -n "${{ inputs.repo }}" ]]; then
           args+=(--repo "${{ inputs.repo }}")

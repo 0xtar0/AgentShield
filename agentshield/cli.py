@@ -6,7 +6,7 @@ from pathlib import Path
 from agentshield import __version__
 from agentshield.audit import run_audit
 from agentshield.baseline import apply_baseline, load_baseline, write_baseline
-from agentshield.models import AuditContext, SEVERITY_ORDER
+from agentshield.models import AuditContext, AuditReport, SEVERITY_ORDER
 from agentshield.policy import load_policy, write_default_policy
 from agentshield.report import write_html, write_json, write_markdown, write_sarif
 
@@ -41,6 +41,7 @@ def build_parser() -> argparse.ArgumentParser:
     scan.add_argument("--baseline", type=Path, help="Suppress findings listed in an AgentShield baseline JSON file.")
     scan.add_argument("--write-baseline", type=Path, help="Write a baseline JSON file from the full unsuppressed audit.")
     scan.add_argument("--policy", type=Path, help="Apply an AgentShield policy JSON file.")
+    scan.add_argument("--min-severity", choices=["info", "low", "medium", "high", "critical"], default="info", help="Only include findings at this severity or higher in reports and failure checks.")
     scan.add_argument("--fail-on", choices=["none", "low", "medium", "high", "critical"], default="none", help="Exit non-zero when this severity or higher is present.")
 
     init_policy = subparsers.add_parser("init-policy", help="Write a starter AgentShield policy JSON file.")
@@ -78,6 +79,7 @@ def _scan(args: argparse.Namespace) -> int:
         baseline_result = apply_baseline(report, baseline_fingerprints)
         report = baseline_result.report
         suppressed_count = len(baseline_result.suppressed)
+    report = _filter_min_severity(report, args.min_severity)
 
     html_path: Path | None = args.output
     json_path: Path | None = args.json_output
@@ -108,6 +110,8 @@ def _scan(args: argparse.Namespace) -> int:
         print(f"Baseline suppressed: {suppressed_count} findings")
     if args.policy:
         print(f"Policy applied: {args.policy}")
+    if args.min_severity != "info":
+        print(f"Minimum severity: {args.min_severity}")
     if args.format in ("html", "all"):
         print(f"HTML report: {html_path}")
     if json_path:
@@ -136,6 +140,14 @@ def _init_policy(args: argparse.Namespace) -> int:
 def _counts_text(report) -> str:
     counts = report.counts
     return ", ".join(f"{counts[severity]} {severity}" for severity in ["critical", "high", "medium", "low", "info"])
+
+
+def _filter_min_severity(report, min_severity: str):
+    threshold = SEVERITY_ORDER[min_severity]
+    findings = [finding for finding in report.findings if SEVERITY_ORDER[finding.severity] >= threshold]
+    if len(findings) == len(report.findings):
+        return report
+    return AuditReport(generated_at=report.generated_at, home=report.home, findings=findings)
 
 
 def _positive_int(value: str) -> int:

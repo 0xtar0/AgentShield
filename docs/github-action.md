@@ -22,6 +22,7 @@ jobs:
         with:
           fail-on: high
           format: all
+          min-severity: low
           output: reports/agentshield.html
           repo: ${{ github.workspace }}
           skip-shell-history: "true"

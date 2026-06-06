@@ -28,6 +28,14 @@ class ProjectScanTests(unittest.TestCase):
             self.assertIn(".env", finding.metadata["missing_patterns"])
             self.assertIn(".npmrc", finding.metadata["missing_patterns"])
 
+    def test_gitignore_wildcards_cover_env_patterns(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            (repo / ".gitignore").write_text(".env*\n.npmrc\n.pypirc\n.netrc\n.aws/credentials\n.codex/auth.json\n", encoding="utf-8")
+
+            findings = scan_project(AuditContext(home=repo, repo=repo, command_runner=lambda command, timeout: (1, "", "")))
+            self.assertEqual([finding.id for finding in findings], ["project.no_obvious_risks"])
+
     def test_does_not_flag_generic_credentials_or_auth_files(self):
         with tempfile.TemporaryDirectory() as tmp:
             repo = Path(tmp)

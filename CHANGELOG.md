@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Added `--min-severity` filtering for reports and failure checks.
+- Improved `.gitignore` matching so `.env*` covers both `.env` and `.env.*` requirements.
 - Reduced repository-scan false positives for generic `credentials` and `auth.json` files.
 - Made `.gitignore` secret-pattern checks line-based so comments and `.env.example` do not satisfy `.env`.
 - Skipped generated report/cache directories during repository scans.
