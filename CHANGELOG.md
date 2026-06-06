@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Reduced repository-scan false positives for generic `credentials` and `auth.json` files.
+- Made `.gitignore` secret-pattern checks line-based so comments and `.env.example` do not satisfy `.env`.
+- Skipped generated report/cache directories during repository scans.
+- Added CI smoke coverage for `--repo` scans.
 - Added optional `--repo` project scanning for sensitive files, missing `.gitignore` protections, tokenized remotes, and repo-local agent config.
 - Added baseline write/apply support for gradual adoption and new-finding-only CI gates.
 - Added AI agent tool exposure checks for local agent CLI inventory and sensitive agent config files.

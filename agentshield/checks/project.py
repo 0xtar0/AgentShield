@@ -7,7 +7,22 @@ from agentshield.models import AuditContext, Finding
 from agentshield.redact import TOKEN_PATTERNS, redact
 from agentshield.utils import default_command_runner, safe_read_text
 
-IGNORED_DIRS = {".git", ".hg", ".svn", "node_modules", ".venv", "venv", "__pycache__", "dist", "build"}
+IGNORED_DIRS = {
+    ".git",
+    ".hg",
+    ".svn",
+    ".mypy_cache",
+    ".pytest_cache",
+    ".ruff_cache",
+    ".tox",
+    ".venv",
+    "__pycache__",
+    "build",
+    "dist",
+    "node_modules",
+    "reports",
+    "venv",
+}
 
 SENSITIVE_FILENAMES = {
     ".env",
@@ -17,9 +32,6 @@ SENSITIVE_FILENAMES = {
     ".npmrc",
     ".pypirc",
     ".netrc",
-    "credentials",
-    "credentials.toml",
-    "auth.json",
     "mcp.json",
     "claude_desktop_config.json",
 }
@@ -105,7 +117,8 @@ def _scan_gitignore(repo: Path) -> list[Finding]:
                 remediation="Check .gitignore permissions and contents.",
             )
         ]
-    missing = [pattern for pattern in GITIGNORE_PATTERNS if pattern not in content]
+    ignored_patterns = _parse_gitignore_patterns(content)
+    missing = [pattern for pattern in GITIGNORE_PATTERNS if pattern not in ignored_patterns and f"/{pattern}" not in ignored_patterns]
     if not missing:
         return []
     return [
@@ -168,8 +181,23 @@ def _is_sensitive_file(path: Path) -> bool:
         return True
     if path.name.startswith(".env."):
         return True
-    relative = path.as_posix()
-    return "/.aws/credentials" in relative or "/.codex/auth.json" in relative or "/.cursor/mcp.json" in relative
+    parent = path.parent.name
+    return (
+        (parent == ".aws" and path.name == "credentials")
+        or (parent == ".cargo" and path.name in {"credentials", "credentials.toml"})
+        or (parent == ".codex" and path.name == "auth.json")
+        or (parent == ".cursor" and path.name == "mcp.json")
+    )
+
+
+def _parse_gitignore_patterns(content: str) -> set[str]:
+    patterns: set[str] = set()
+    for raw_line in content.splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or line.startswith("!"):
+            continue
+        patterns.add(line.rstrip("/"))
+    return patterns
 
 
 def _project_secret_findings(path: Path) -> list[Finding]:
